@@ -32,42 +32,41 @@ void* CarMovement(void* _carNumber)
     //konieczna dealokacja, gdyż CreateCars() alokuje pamięć specjalnie dla parametru
     free(_carNumber);
 
-    for(int i = 0; i < 2; i++) //TODO: Zastąp nieskończoną pętlą
+    for(;;)//(int i = 0; i < 2; i++) //TODO: Zastąp nieskończoną pętlą
     {
         printf("#%d w A\n", carNumber);
 
         pthread_mutex_lock(&bridgeMutex);
 
-        while(bridge != 0)
-        {
-            printf("#%d czeka, bo #%d na moście\n",carNumber,bridge);
-            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
-        }
+//        while(bridge != 0)
+//        {
+//            printf("#%d czeka, bo #%d na moście\n",carNumber,bridge);
+//            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
+//        }
 
         bridge = carNumber;
         printf("Info od #%d: #%d na moście\n",carNumber,bridge);
+
         bridge = 0;
         pthread_mutex_unlock(&bridgeMutex);
-        pthread_cond_signal(&brdigeCondition);
-//        sleep(1);
+//        pthread_cond_signal(&brdigeCondition);
 
         printf("#%d w B\n", carNumber);
 
         pthread_mutex_lock(&bridgeMutex);
 
-        while(bridge != 0)
-        {
-            printf("#%d czeka, bo #%d na moście\n",carNumber,bridge);
-            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
-        }
+//        while(bridge != 0)
+//        {
+//            printf("#%d czeka, bo #%d na moście\n",carNumber,bridge);
+//            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
+//        }
 
         bridge = carNumber;
         printf("Info od #%d: #%d na moście\n",carNumber,bridge);
+
         bridge = 0;
         pthread_mutex_unlock(&bridgeMutex);
-        pthread_cond_signal(&brdigeCondition);
-//        sleep(1);
-
+//        pthread_cond_signal(&brdigeCondition);
     }
 
     printf("#%d w A\n", carNumber);
@@ -142,29 +141,24 @@ int GetCarCount(int argc, char **argv)
 }
 
 /*!
-@param cityACarsCount liczba pojazdów znajdujących się w mieście A
-@param cityBCarsCount liczba pojazdów znajdujących się w mieście B
-@param queueACarsCount liczba pojazdów jadących z miasta A, czekających na przejazd
-@param queueBCarsCount liczba pojazdów jadących z miasta B, czekających na przejazd
+@param cityA liczba pojazdów znajdujących się w mieście A
+@param cityB liczba pojazdów znajdujących się w mieście B
+@param queueA liczba pojazdów jadących z miasta A, czekających na przejazd
+@param queueB liczba pojazdów jadących z miasta B, czekających na przejazd
 @param direction kierunek ruchu pojazdu przejeżdżającego przez most
-@param carOnBridgeNumber numer pojazdu przejeżdżającego przez most
+@param carOnBridge numer pojazdu przejeżdżającego przez most
 @details wypisuje aktualny stan ruchu przez most
 */
-void PrintCurrentState(int cityACarsCount,
-                       int cityBCarsCount,
-                       int queueACarsCount,
-                       int queueBCarsCount,
-                       char* direction,
-                       int carOnBridgeNumber)
+void PrintCurrentState(int cityA, int cityB, int queueA, int queueB, char* direction, int carOnBridge)
 {
     printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
-           cityACarsCount,
-           queueACarsCount,
+           cityA,
+           queueA,
            direction,
-           carOnBridgeNumber,
+           carOnBridge,
            direction,
-           queueBCarsCount,
-           cityBCarsCount);
+           queueB,
+           cityB);
 }
 
 void Algorytm_MutexySemafory()
