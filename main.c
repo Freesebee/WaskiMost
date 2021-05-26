@@ -2,6 +2,11 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+//makro opisujące prawa dostępu do pliku kolejki FIFO
+#define FILE_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
 //TODO: Realizacja b) - funkcje:
 /*
@@ -20,7 +25,7 @@ Wykonuje to samo co pthread_cond_wait(,) lecz dla wszystkich wątków oczekując
 
 pthread_mutex_t bridgeMutex;
 pthread_cond_t brdigeCondition;
-int bridge = 0;
+int selectedCar = 0;
 
 /*!
 @param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
@@ -32,41 +37,41 @@ void* CarMovement(void* _carNumber)
     //konieczna dealokacja, gdyż CreateCars() alokuje pamięć specjalnie dla parametru
     free(_carNumber);
 
-    for(;;)//(int i = 0; i < 2; i++) //TODO: Zastąp nieskończoną pętlą
+    for/*(;;)*/(int i = 0; i < 2; i++) //TODO: Zastąp nieskończoną pętlą
     {
         printf("#%d w A\n", carNumber);
 
         pthread_mutex_lock(&bridgeMutex);
 
-//        while(bridge != 0)
-//        {
-//            printf("#%d czeka, bo #%d na moście\n",carNumber,bridge);
-//            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
-//        }
+        while(selectedCar != 0 && selectedCar != carNumber)
+        {
+            printf("#%d czeka, bo #%d na moście\n",carNumber,selectedCar);
+            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
+        }
 
-        bridge = carNumber;
-        printf("Info od #%d: #%d na moście\n",carNumber,bridge);
+        selectedCar = carNumber;
+        printf("Info od #%d: #%d na moście\n", carNumber, selectedCar);
 
-        bridge = 0;
+        selectedCar = 0;
         pthread_mutex_unlock(&bridgeMutex);
-//        pthread_cond_signal(&brdigeCondition);
+        pthread_cond_broadcast(&brdigeCondition);
 
         printf("#%d w B\n", carNumber);
 
         pthread_mutex_lock(&bridgeMutex);
 
-//        while(bridge != 0)
-//        {
-//            printf("#%d czeka, bo #%d na moście\n",carNumber,bridge);
-//            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
-//        }
+        while(selectedCar != 0 && selectedCar != carNumber)
+        {
+            printf("#%d czeka, bo #%d na moście\n",carNumber,selectedCar);
+            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
+        }
 
-        bridge = carNumber;
-        printf("Info od #%d: #%d na moście\n",carNumber,bridge);
+        selectedCar = carNumber;
+        printf("Info od #%d: #%d na moście\n", carNumber, selectedCar);
 
-        bridge = 0;
+        selectedCar = 0;
         pthread_mutex_unlock(&bridgeMutex);
-//        pthread_cond_signal(&brdigeCondition);
+        pthread_cond_broadcast(&brdigeCondition);
     }
 
     printf("#%d w A\n", carNumber);
@@ -228,9 +233,20 @@ void CrossBridgeVersionB(int carCount)
 
     pthread_t* carsArray = CreateCars(carCount);
 
-    //Pomocnicze kolekcje
-//    int* aCityQueue = (int*)calloc(carCount,sizeof(int));
-//    int* bCityQueue = (int*)calloc(carCount,sizeof(int));
+    mkfifo("FIFO_A", FILE_MODE);
+    mkfifo("FIFO_B", FILE_MODE);
+
+    int pid = fork();
+
+    // PROCES MACIERZYSTY:
+    int writefd = open("FIFO_A", O_WRONLY, 0);
+    int readfd = open("FIFO_B", O_RDONLY, 0);
+    //ProceduraOjca(...);,
+
+    // PROCES POTOMNY:
+    readfd = open("FIFO_A", O_RDONLY, 0);
+    writefd = open("FIFO_B", O_WRONLY, 0);
+    //ProceduraSyna(...);
 
     DestroyCars(carsArray, carCount);
 
