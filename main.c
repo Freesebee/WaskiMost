@@ -201,7 +201,7 @@ void* CarMovement(void* _carNumber)
     //konieczna dealokacja, gdyż CreateCars() alokuje pamięć specjalnie dla parametru
     free(_carNumber);
 
-    for/*(;;)*/(int i = 0; i < 100; i++) //TODO: Zastąp nieskończoną pętlą
+    for(;;)
     {
         //region Wyjazd z miasta A
         pthread_mutex_lock(&bridgeMutex);
@@ -212,7 +212,7 @@ void* CarMovement(void* _carNumber)
 
         pthread_mutex_lock(&bridgeMutex);
 
-        while(Peek(queueA) != carNumber)
+        while(Peek(queueA) != carNumber || (carOnBridgeDirection == 0 && GetQueueLenght(queueB) > 0))
         {
             pthread_cond_wait(&bridgeCondition, &bridgeMutex);
         }
@@ -239,7 +239,7 @@ void* CarMovement(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
 
         pthread_mutex_lock(&bridgeMutex);
-        while(Peek(queueB) != carNumber)
+        while(Peek(queueB) != carNumber || (carOnBridgeDirection == 1 && GetQueueLenght(queueA) > 0))
         {
             pthread_cond_wait(&bridgeCondition, &bridgeMutex);
         }
