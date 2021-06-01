@@ -11,15 +11,15 @@
 //TODO: Realizacja b) - funkcje:
 /*
 
-pthread_cond_signal(&brdigeCondition, &bridgeMutex);
+pthread_cond_signal(&bridgeCondition, &bridgeMutex);
 
-pthread_cond_wait(&brdigeCondition);
+///pthread_cond_wait(&bridgeCondition);
 Wykonuje:
 1. pthread_mutex_unlock(&bridgeMutex);
-2. Czeka na sygnał od pthread_cond_signal(&brdigeCondition, &bridgeMutex);
+2. Czeka na sygnał od pthread_cond_signal(&bridgeCondition, &bridgeMutex);
 3. pthread_mutex_lock(&bridgeMutex);
 
-pthread_cond_broadcast(&brdigeCondition, &bridgeMutex);
+pthread_cond_broadcast(&bridgeCondition, &bridgeMutex);
 Wykonuje to samo co pthread_cond_wait(,) lecz dla wszystkich wątków oczekujących na sygnał
 */
 
@@ -107,6 +107,18 @@ int GetQueueLenght(QUEUE_ELEM* head)
     return length;
 }
 
+void ShowQueue(QUEUE_ELEM* iterator)
+{
+    if(GetQueueLenght(iterator) > 0)
+    {
+        while(iterator != NULL)
+        {
+            printf("%d\n",iterator->carNuber);
+            iterator = iterator->next;
+        }
+    }
+}
+
 //endregion
 
 //region Zmienne globalne
@@ -114,19 +126,23 @@ int GetQueueLenght(QUEUE_ELEM* head)
 pthread_mutex_t bridgeMutex;
 
 /*!@details Zmienna warunkowa sygnalizująca wątkom dostęp do zasobu*/
-pthread_cond_t brdigeCondition;
+pthread_cond_t bridgeCondition;
 
 /*!@details Pierwszy element kolejki*/
 QUEUE_ELEM *queueA, *queueB;
 
 /*!@details Numer pojazdu aktualnie przejeżdżającego przez most*/
-int selectedCar = 0;
+int carOnBridge = -1;
+
+/*!@details Kierunek ruchu pojazdu aktualnie przejeżdżającego przez most
+ * 0 jeżeli jedzie z miasta A, 1 jeżeli jedzie z miasta B */
+int carOnBridgeDirection;
 
 /*!@details liczba pojazdów aktualnie znajdujących się w mieście A*/
-int cityCountA = 0;
+int cityCountA;
 
 /*!@details liczba pojazdów aktualnie znajdujących się w mieście B*/
-int cityCountB = 0;
+int cityCountB;
 
 //endregion
 
@@ -140,28 +156,38 @@ int cityCountB = 0;
 @param carOnBridge numer pojazdu przejeżdżającego przez most
 @details wypisuje aktualny stan ruchu przez most
 */
-void PrintCurrentState(int cityA, int cityB, char fromCityA, int carInfo,int carOnBridge )
+void PrintCurrentState()
 {
-    char* direction;
-
-    if (fromCityA == 0) //jedzie z miasta B
+    if(carOnBridge != -1)
     {
-       direction = "<<";
-    }
-    else //jedzie z miasta A
-    {
-        direction = ">>";
-    }
+        char* direction;
 
-    printf("[#%d] A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
-           carInfo,
-           cityA,
-           GetQueueLenght(queueA),
-           direction,
-           carOnBridge,
-           direction,
-           GetQueueLenght(queueB),
-           cityB);
+        if (carOnBridgeDirection == 0 ) //jedzie z miasta A
+        {
+           direction = ">>";
+        }
+        else //jedzie z miasta B
+        {
+            direction = "<<";
+        }
+
+        printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
+               cityCountA,
+               GetQueueLenght(queueA),
+               direction,
+               carOnBridge,
+               direction,
+               GetQueueLenght(queueB),
+               cityCountB);
+    }
+    else
+    {
+        printf("A-%d %d>>> [        ] <<<%d %d-B\n",
+               cityCountA,
+               GetQueueLenght(queueA),
+               GetQueueLenght(queueB),
+               cityCountB);
+    }
 }
 
 /*!
@@ -175,44 +201,63 @@ void* CarMovement(void* _carNumber)
     //konieczna dealokacja, gdyż CreateCars() alokuje pamięć specjalnie dla parametru
     free(_carNumber);
 
-    for/*(;;)*/(int i = 0; i < 3; i++) //TODO: Zastąp nieskończoną pętlą
+    for/*(;;)*/(int i = 0; i < 100; i++) //TODO: Zastąp nieskończoną pętlą
     {
-        printf("#%d w A\n", carNumber);
+        //region Wyjazd z miasta A
+        pthread_mutex_lock(&bridgeMutex);
+        cityCountA--;
+        Enqueue(&queueA, carNumber);
+        PrintCurrentState();
+        pthread_mutex_unlock(&bridgeMutex);
 
         pthread_mutex_lock(&bridgeMutex);
 
-        while(selectedCar != -1 /*&& selectedCar != carNumber*/)
+        while(Peek(queueA) != carNumber)
         {
-            printf("#%d czeka, bo #%d na moście\n",carNumber,selectedCar);
-            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
+            pthread_cond_wait(&bridgeCondition, &bridgeMutex);
         }
 
-        selectedCar = carNumber;
-        PrintCurrentState(0,0,1,carNumber, selectedCar);
+        Dequeue(&queueA);
+        //endregion
 
-        selectedCar = -1;
+        //region Ruch na moście i dojazd do B
+        carOnBridge = carNumber;
+        carOnBridgeDirection = 0;
+        PrintCurrentState();
+        carOnBridge = -1;
+        cityCountB++;
+        PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
-        pthread_cond_broadcast(&brdigeCondition);
+        pthread_cond_broadcast(&bridgeCondition);
+        //endregion
 
-        printf("#%d w B\n", carNumber);
+        //region Wyjazd z miasta B
+        pthread_mutex_lock(&bridgeMutex);
+        cityCountB--;
+        Enqueue(&queueB, carNumber);
+        PrintCurrentState();
+        pthread_mutex_unlock(&bridgeMutex);
 
         pthread_mutex_lock(&bridgeMutex);
-
-        while(selectedCar != -1 /*&& selectedCar != carNumber*/)
+        while(Peek(queueB) != carNumber)
         {
-            printf("#%d czeka, bo #%d na moście\n",carNumber,selectedCar);
-            pthread_cond_wait(&brdigeCondition, &bridgeMutex);
+            pthread_cond_wait(&bridgeCondition, &bridgeMutex);
         }
 
-        selectedCar = carNumber;
-        PrintCurrentState(0,0,0,carNumber,selectedCar);
+        Dequeue(&queueB);
+        //endregion
 
-        selectedCar = -1;
+        //region Ruch na moście i dojazd do A
+        carOnBridge = carNumber;
+        carOnBridgeDirection = 1;
+        PrintCurrentState();
+        carOnBridge = -1;
+        cityCountA++;
+        PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
-        pthread_cond_broadcast(&brdigeCondition);
+        pthread_cond_broadcast(&bridgeCondition);
+        //endregion
     }
-
-    printf("#%d w A\n", carNumber);
 
     return NULL;
 }
@@ -225,6 +270,11 @@ void* CarMovement(void* _carNumber)
 pthread_t* CreateCars(int count)
 {
     pthread_t* carsArray = (pthread_t*)malloc(sizeof(pthread_t) * count);
+
+    cityCountA = count;
+    cityCountB = 0;
+
+    PrintCurrentState();
 
     for (int i = 0; i < count; ++i)
     {
@@ -287,7 +337,7 @@ int GetCarCount(int argc, char **argv)
 
 void CrossBridgeVersionB(int carCount)
 {
-    pthread_cond_init(&brdigeCondition, NULL);
+    pthread_cond_init(&bridgeCondition, NULL);
 
     pthread_t* carsArray = CreateCars(carCount);
 
@@ -300,7 +350,7 @@ int main(int argc, char** argv)
 {
     int carCount = GetCarCount(argc, argv);
 
-    pthread_cond_init(&brdigeCondition, NULL);
+    pthread_cond_init(&bridgeCondition, NULL);
 
     pthread_t* carsArray = CreateCars(carCount);
 
