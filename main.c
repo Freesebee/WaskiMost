@@ -8,21 +8,6 @@
 #include <string.h>
 #include <errno.h>
 
-//TODO: Realizacja b) - funkcje:
-/*
-
-pthread_cond_signal(&bridgeCondition, &bridgeMutex);
-
-///pthread_cond_wait(&bridgeCondition);
-Wykonuje:
-1. pthread_mutex_unlock(&bridgeMutex);
-2. Czeka na sygnał od pthread_cond_signal(&bridgeCondition, &bridgeMutex);
-3. pthread_mutex_lock(&bridgeMutex);
-
-pthread_cond_broadcast(&bridgeCondition, &bridgeMutex);
-Wykonuje to samo co pthread_cond_wait(,) lecz dla wszystkich wątków oczekujących na sygnał
-*/
-
 //region Implementacja kolejki
 
 /*!@details Element kolejki będący elementem listy jednokierunkowej*/
@@ -335,6 +320,20 @@ int GetCarCount(int argc, char **argv)
 
 //endregion
 
+//region Wariant zadania
+/*!
+ * @details Funkcja wykonująca wariant a) programu
+ * @param Liczba pojazdów/wątków, które mają przejeżdżać przez most
+ */
+void CrossBridgeVersionA(int carCount)
+{
+
+}
+
+/*!
+ * @details Funkcja wykonująca wariant b) programu
+ * @param Liczba pojazdów/wątków, które mają przejeżdżać przez most
+ */
 void CrossBridgeVersionB(int carCount)
 {
     pthread_cond_init(&bridgeCondition, NULL);
@@ -345,18 +344,10 @@ void CrossBridgeVersionB(int carCount)
 
     free(carsArray);
 }
+//endregion
 
 int main(int argc, char** argv)
 {
-    int carCount = GetCarCount(argc, argv);
-
-    pthread_cond_init(&bridgeCondition, NULL);
-
-    pthread_t* carsArray = CreateCars(carCount);
-
-    DestroyCars(carsArray, carCount);
-
-    free(carsArray);
-
+    CrossBridgeVersionB(GetCarCount(argc, argv));
     return 0;
 }
