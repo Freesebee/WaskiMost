@@ -176,6 +176,11 @@ void PrintCurrentState()
                cityCountB);
     }
     else
+        printf("A-%d %d>>> [        ] <<<%d %d-B\n",
+           cityCountA,
+           GetQueueLenght(queueA),
+           GetQueueLenght(queueB),
+           cityCountB);
 }
 
 /*!
