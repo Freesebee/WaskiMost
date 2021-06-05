@@ -111,6 +111,8 @@ void ShowQueue(QUEUE_ELEM* iterator)
 //region Zmienne globalne
 /*!@details Opisuje prawa dostępu do pliku kolejki FIFO*/
 pthread_mutex_t bridgeMutex;
+pthread_mutex_t cityA;
+pthread_mutex_t cityB;
 
 /*!@details Zmienna warunkowa sygnalizująca wątkom dostęp do zasobu*/
 pthread_cond_t bridgeCondition;
@@ -270,21 +272,27 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
     while(1)
     {
-        sem_post(&variable);
+        //sem_wait(&variable);
+        pthread_mutex_lock(&cityA);
         cityCountA++;
-
         PrintCurrentState();
+        pthread_mutex_unlock(&cityA);
+        //sem_post(&variable);
+
         if(cityCountB == 0)
         {
             while(GetQueueLenght(queueA) < cityCountA)
             {
+                pthread_mutex_lock(&cityA);
+                cityCountA--;
                 Enqueue(&queueA, carNumber);
                 PrintCurrentState();
-                sem_post(&semA);
+                pthread_mutex_unlock(&cityA);
+                sem_post(&semA); //dodanie do kolejki
             }
         }
-        sem_post(&variable);
-        sem_wait(&semA);
+        sem_wait(&variable); //chec wjazdu na most
+        sem_wait(&semA);   //opuszczenie kolejki
         //wjezdza na most
         carOnBridge = carNumber;
         PrintCurrentState();
@@ -445,6 +453,8 @@ void CrossBridgeVersionA(int carCount)
     sem_init(&semA, 0, 0);
     sem_init(&semB, 0, 0);
     sem_init(&variable, 0, 1);
+    pthread_mutex_init(&cityA,NULL);
+    pthread_mutex_init(&cityB,NULL);
 
     int carCountA = carCount/2;
     int carCountB = carCount - carCountA;
@@ -454,6 +464,9 @@ void CrossBridgeVersionA(int carCount)
 
     DestroyCars(carsArrayA,carCountA);
     DestroyCars(carsArrayB,carCountB);
+
+     pthread_mutex_destroy(&cityA);
+     pthread_mutex_destroy(&cityB);
 
     sem_destroy(&semA);
     sem_destroy(&semB);
