@@ -188,7 +188,7 @@ void PrintCurrentState()
 @param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
 @details Funkcja wykonywana przez każdy utworzony wątek (wariant b) zadania)
 */
-void* CarMovement(void* _carNumber)
+void* CarMovement_vB(void* _carNumber)
 {
     int carNumber = *(int*)_carNumber;
 
@@ -263,7 +263,7 @@ void* CarMovement(void* _carNumber)
 @param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
 @details Funkcja wykonywana przez utworzony wątek (wariant a) zadania) //TODO: Do opisania przez Arka
 */
-_Noreturn void* CarMovementA(void* _carNumber)
+_Noreturn void* CarMovement_vA_A(void* _carNumber)
 {
     int carNumber = *(int*)_carNumber;
     free(_carNumber);
@@ -315,7 +315,7 @@ _Noreturn void* CarMovementA(void* _carNumber)
 @param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
 @details Funkcja wykonywana przez utworzony wątek (wariant a) zadania) //TODO: Do opisania przez Arka
 */
-_Noreturn void* CarMovementB(void* _carNumber)
+_Noreturn void* CarMovement_vA_B(void* _carNumber)
 {
     int carNumber = *(int*)_carNumber;
     free(_carNumber);
@@ -435,7 +435,7 @@ int GetCarCount(int argc, char **argv)
 
 //endregion
 
-//region Wariant zadania
+//region Warianty zadania
 /*!
  * @details Funkcja wykonująca wariant a) programu
  * @param Liczba pojazdów/wątków, które mają przejeżdżać przez most
@@ -449,8 +449,8 @@ void CrossBridgeVersionA(int carCount)
     int carCountA = carCount/2;
     int carCountB = carCount - carCountA;
 
-    pthread_t* carsArrayA = CreateCars(carCountA, CarMovementA);
-    pthread_t* carsArrayB = CreateCars(carCountB, CarMovementB);
+    pthread_t* carsArrayA = CreateCars(carCountA, CarMovement_vA_A);
+    pthread_t* carsArrayB = CreateCars(carCountB, CarMovement_vA_B);
 
     DestroyCars(carsArrayA,carCountA);
     DestroyCars(carsArrayB,carCountB);
@@ -468,7 +468,7 @@ void CrossBridgeVersionB(int carCount)
 {
     pthread_cond_init(&bridgeCondition, NULL);
 
-    pthread_t* carsArray = CreateCars(carCount, CarMovement);
+    pthread_t* carsArray = CreateCars(carCount, CarMovement_vB);
 
     DestroyCars(carsArray, carCount);
 
