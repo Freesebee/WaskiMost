@@ -258,9 +258,6 @@ void* CarMovement_vB(void* _carNumber)
     return NULL;
 }
 
-//V - post
-//P - wait
-
 /*!
 @param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
 @details Funkcja wykonywana przez utworzony wątek (wariant a) zadania) //TODO: Do opisania przez Arka
@@ -272,50 +269,86 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
     while(1)
     {
-        //sem_wait(&variable);
-        pthread_mutex_lock(&cityA);
+        pthread_mutex_lock(&bridgeMutex); //wjazd do miasta A
         cityCountA++;
         PrintCurrentState();
-        pthread_mutex_unlock(&cityA);
-        //sem_post(&variable);
+        pthread_mutex_unlock(&bridgeMutex);
 
         if(cityCountB == 0)
         {
             while(GetQueueLenght(queueA) < cityCountA)
             {
-                pthread_mutex_lock(&cityA);
-                cityCountA--;
-                Enqueue(&queueA, carNumber);
+                pthread_mutex_lock(&bridgeMutex);
+                cityCountA--; //opuszczenie A
+                Enqueue(&queueA, carNumber); //stanięcie w kolejce z A
                 PrintCurrentState();
-                pthread_mutex_unlock(&cityA);
-                sem_post(&semA); //dodanie do kolejki
+                pthread_mutex_unlock(&bridgeMutex);
             }
         }
-        sem_wait(&variable); //chec wjazdu na most
-        sem_wait(&semA);   //opuszczenie kolejki
-        //wjezdza na most
-        carOnBridge = carNumber;
+
+        do
+        {
+            sem_wait(&variable); //chec wjazdu na most
+            if(Peek(queueA) == carNumber)
+            {
+                pthread_mutex_lock(&bridgeMutex);
+                Dequeue(&queueA); //opuszcza kolejkę z A
+                break;
+            }
+            else
+                sem_post(&variable);
+        }
+        while(1);
+
+
+        carOnBridge = carNumber; //wjezdza na most
         PrintCurrentState();
-        carOnBridge = -1;
-        //zjezdza z mostu
-        sem_wait(&variable);
-        Dequeue(&queueA);
+        pthread_mutex_unlock(&bridgeMutex);
+
+        pthread_mutex_lock(&bridgeMutex);
+        carOnBridge = -1; //zjezdza z mostu
+
+        sem_post(&variable); //odblokowanie mostu dla innych aut
+
+        cityCountB++; //wjazd do miasta B
         PrintCurrentState();
-        cityCountA--;
-        PrintCurrentState();
+        pthread_mutex_unlock(&bridgeMutex);
 
         if(GetQueueLenght(queueA) == 0)
         {
-
-            while(GetQueueLenght(queueB)<cityCountB)
+            while(GetQueueLenght(queueB) < cityCountB)
             {
-                Enqueue(&queueB, carNumber);
+                pthread_mutex_lock(&bridgeMutex);
+                cityCountB--; //opuszczenie A
+                Enqueue(&queueB, carNumber); //stanięcie w kolejce z B
                 PrintCurrentState();
-
-                sem_post(&semB);
+                pthread_mutex_unlock(&bridgeMutex);
             }
         }
-        sem_post(&variable);
+
+        do
+        {
+            sem_wait(&variable); //chec wjazdu na most
+            if(Peek(queueB) == carNumber)
+            {
+                pthread_mutex_lock(&bridgeMutex);
+                Dequeue(&queueB); //opuszcza kolejkę z A
+                break;
+            }
+            else
+                sem_post(&variable);
+        }
+        while(1);
+
+        carOnBridge = carNumber; //wjezdza na most
+        PrintCurrentState();
+        pthread_mutex_unlock(&bridgeMutex);
+
+        pthread_mutex_lock(&bridgeMutex);
+        carOnBridge = -1; //zjezdza z mostu
+        pthread_mutex_unlock(&bridgeMutex);
+
+        sem_post(&variable); //odblokowanie mostu dla innych aut
     }
 }
 
@@ -378,11 +411,6 @@ _Noreturn void* CarMovement_vA_B(void* _carNumber)
 pthread_t* CreateCars(int count, void* threadFunction)
 {
     pthread_t* carsArray = (pthread_t*)malloc(sizeof(pthread_t) * count);
-
-    cityCountA = count;
-    cityCountB = 0;
-
-    PrintCurrentState();
 
     for (int i = 0; i < count; ++i)
     {
@@ -456,14 +484,14 @@ void CrossBridgeVersionA(int carCount)
     pthread_mutex_init(&cityA,NULL);
     pthread_mutex_init(&cityB,NULL);
 
-    int carCountA = carCount/2;
+    int carCountA = carCount;//2;
     int carCountB = carCount - carCountA;
 
     pthread_t* carsArrayA = CreateCars(carCountA, CarMovement_vA_A);
-    pthread_t* carsArrayB = CreateCars(carCountB, CarMovement_vA_B);
+//    pthread_t* carsArrayB = CreateCars(carCountB, CarMovement_vA_B);
 
     DestroyCars(carsArrayA,carCountA);
-    DestroyCars(carsArrayB,carCountB);
+//    DestroyCars(carsArrayB,carCountB);
 
      pthread_mutex_destroy(&cityA);
      pthread_mutex_destroy(&cityB);
@@ -479,18 +507,19 @@ void CrossBridgeVersionA(int carCount)
  */
 void CrossBridgeVersionB(int carCount)
 {
+    pthread_mutex_init(&bridgeMutex, NULL);
     pthread_cond_init(&bridgeCondition, NULL);
 
     pthread_t* carsArray = CreateCars(carCount, CarMovement_vB);
 
+    pthread_mutex_destroy(&bridgeMutex);
     DestroyCars(carsArray, carCount);
-
     free(carsArray);
 }
 //endregion
 
 int main(int argc, char** argv)
 {
-    CrossBridgeVersionB(GetCarCount(argc, argv));
+    CrossBridgeVersionA(GetCarCount(argc, argv));
     return 0;
 }
