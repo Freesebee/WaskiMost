@@ -194,7 +194,7 @@ void* CarMovement_vB(void* _carNumber)
     //konieczna dealokacja, gdyż CreateCars() alokuje pamięć specjalnie dla parametru
     free(_carNumber);
 
-    //for(;;)
+    for(;;)
     {
         //region Wyjazd z miasta A
         pthread_mutex_lock(&bridgeMutex);
@@ -202,8 +202,6 @@ void* CarMovement_vB(void* _carNumber)
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
-
-        usleep(100);
 
         //region Dołączenie do kolejki z A
         pthread_mutex_lock(&bridgeMutex);
@@ -222,8 +220,6 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        usleep(100);
-
         //region Ruch na moście z A do B
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber;
@@ -231,8 +227,6 @@ void* CarMovement_vB(void* _carNumber)
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
-
-        usleep(100);
 
         //region Zjazd z mostu
         pthread_mutex_lock(&bridgeMutex);
@@ -242,8 +236,6 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        usleep(100);
-
         //region Wjazd do miasta B
         pthread_mutex_lock(&bridgeMutex);
         cityCountB++;
@@ -251,16 +243,12 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        usleep(100);
-
         //region Wyjazd z miasta B
         pthread_mutex_lock(&bridgeMutex);
         cityCountB--;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
-
-        usleep(100);
 
         //region Dołączenie do kolejki z B
         pthread_mutex_lock(&bridgeMutex);
@@ -279,8 +267,6 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        usleep(100);
-
         //region Ruch na moście z B do A
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber;
@@ -289,8 +275,6 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        usleep(100);
-
         //region Zjazd z mostu
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1;
@@ -298,8 +282,6 @@ void* CarMovement_vB(void* _carNumber)
         pthread_cond_broadcast(&bridgeCondition);
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
-
-        usleep(100);
 
         //region Wjazd do miasta A
         pthread_mutex_lock(&bridgeMutex);
@@ -361,6 +343,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber; //wjezdza na most
+        carOnBridgeDirection = 0;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
 
@@ -410,6 +393,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber; //wjezdza na most
+        carOnBridgeDirection = 1;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
 
@@ -420,56 +404,6 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         sem_post(&variable); //odblokowanie mostu dla innych aut
-    }
-}
-
-/*!
-@param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
-@details Funkcja wykonywana przez utworzony wątek (wariant a) zadania) //TODO: Do opisania przez Arka
-*/
-_Noreturn void* CarMovement_vA_B(void* _carNumber)
-{
-    int carNumber = *(int*)_carNumber;
-    free(_carNumber);
-    while(1)
-    {
-        sem_wait(&variable);
-        cityCountB++;
-        PrintCurrentState();
-        if(cityCountA == 0)
-        {
-            while(GetQueueLenght(queueB)<cityCountB) {
-                Enqueue(&queueB, carNumber);
-                PrintCurrentState();
-
-                sem_post(&semB);
-            }
-        }
-        sem_post(&variable);
-        sem_wait(&semB);
-        //wjezdza na most
-        carOnBridge = carNumber;
-        PrintCurrentState();
-        carOnBridge = -1;
-        //zjezdza z mostu
-        sem_wait(&variable);
-        Dequeue(&queueB);
-        PrintCurrentState();
-
-        cityCountB--;
-        PrintCurrentState();
-
-        if(GetQueueLenght(queueB) == 0)
-        {
-            while(GetQueueLenght(queueA) < cityCountA)
-            {
-                Enqueue(&queueA, carNumber);
-                PrintCurrentState();
-
-                sem_post(&semA);
-            }
-        }
-        sem_post(&variable);
     }
 }
 
