@@ -153,37 +153,29 @@ sem_t variable;
 */
 void PrintCurrentState()
 {
-//    if(carOnBridge != -1)
-//    {
-//        char* direction;
-//
-//        if (carOnBridgeDirection == 0 ) //jedzie z miasta A
-//        {
-//            direction = ">>";
-//        }
-//        else //jedzie z miasta B
-//        {
-//            direction = "<<";
-//        }
-//
-//        printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
-//               cityCountA,
-//               GetQueueLenght(queueA),
-//               direction,
-//               carOnBridge,
-//               direction,
-//               GetQueueLenght(queueB),
-//               cityCountB);
-//    }
-//    else
+    if(carOnBridge != -1)
+    {
+        char* direction;
 
-    printf("A-%d %d>>> [    %d    ] <<<%d %d-B\n",
-           cityCountA,
-           GetQueueLenght(queueA),
-           carOnBridge,
-           GetQueueLenght(queueB),
-           cityCountB);
+        if (carOnBridgeDirection == 0 ) //jedzie z miasta A
+        {
+            direction = ">>";
+        }
+        else //jedzie z miasta B
+        {
+            direction = "<<";
+        }
 
+        printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
+               cityCountA,
+               GetQueueLenght(queueA),
+               direction,
+               carOnBridge,
+               direction,
+               GetQueueLenght(queueB),
+               cityCountB);
+    }
+    else
 }
 
 /*!
@@ -197,7 +189,7 @@ void* CarMovement_vB(void* _carNumber)
     //konieczna dealokacja, gdyż CreateCars() alokuje pamięć specjalnie dla parametru
     free(_carNumber);
 
-    for(;;)
+    //for(;;)
     {
         //region Wyjazd z miasta A
         pthread_mutex_lock(&bridgeMutex);
@@ -205,6 +197,8 @@ void* CarMovement_vB(void* _carNumber)
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
+
+        usleep(100);
 
         //region Dołączenie do kolejki z A
         pthread_mutex_lock(&bridgeMutex);
@@ -223,6 +217,8 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
+        usleep(100);
+
         //region Ruch na moście z A do B
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber;
@@ -230,6 +226,8 @@ void* CarMovement_vB(void* _carNumber)
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
+
+        usleep(100);
 
         //region Zjazd z mostu
         pthread_mutex_lock(&bridgeMutex);
@@ -239,6 +237,8 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
+        usleep(100);
+
         //region Wjazd do miasta B
         pthread_mutex_lock(&bridgeMutex);
         cityCountB++;
@@ -246,12 +246,16 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
+        usleep(100);
+
         //region Wyjazd z miasta B
         pthread_mutex_lock(&bridgeMutex);
         cityCountB--;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
+
+        usleep(100);
 
         //region Dołączenie do kolejki z B
         pthread_mutex_lock(&bridgeMutex);
@@ -270,6 +274,8 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
+        usleep(100);
+
         //region Ruch na moście z B do A
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber;
@@ -278,6 +284,8 @@ void* CarMovement_vB(void* _carNumber)
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
+        usleep(100);
+
         //region Zjazd z mostu
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1;
@@ -285,6 +293,8 @@ void* CarMovement_vB(void* _carNumber)
         pthread_cond_broadcast(&bridgeCondition);
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
+
+        usleep(100);
 
         //region Wjazd do miasta A
         pthread_mutex_lock(&bridgeMutex);
