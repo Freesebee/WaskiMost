@@ -153,34 +153,33 @@ sem_t variable;
 */
 void PrintCurrentState()
 {
-//    if(carOnBridge != -1)
-//    {
-//        char* direction;
-//
-//        if (carOnBridgeDirection == 0 ) //jedzie z miasta A
-//        {
-//            direction = ">>";
-//        }
-//        else //jedzie z miasta B
-//        {
-//            direction = "<<";
-//        }
-//
-//        printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
-//               cityCountA,
-//               GetQueueLenght(queueA),
-//               direction,
-//               carOnBridge,
-//               direction,
-//               GetQueueLenght(queueB),
-//               cityCountB);
-//    }
-//    else
+    if(carOnBridge != -1)
+    {
+        char* direction;
 
-    printf("A-%d %d>>> [    %d    ] <<<%d %d-B\n",
+        if (carOnBridgeDirection == 0 ) //jedzie z miasta A
+        {
+            direction = ">>";
+        }
+        else //jedzie z miasta B
+        {
+            direction = "<<";
+        }
+
+        printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
+               cityCountA,
+               GetQueueLenght(queueA),
+               direction,
+               carOnBridge,
+               direction,
+               GetQueueLenght(queueB),
+               cityCountB);
+    }
+    else
+
+    printf("A-%d %d>>> [        ] <<<%d %d-B\n",
            cityCountA,
            GetQueueLenght(queueA),
-           carOnBridge,
            GetQueueLenght(queueB),
            cityCountB);
 
@@ -346,6 +345,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber; //wjezdza na most
+        carOnBridgeDirection = 0;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
 
@@ -395,6 +395,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber; //wjezdza na most
+        carOnBridgeDirection = 1;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
 
@@ -405,56 +406,6 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         sem_post(&variable); //odblokowanie mostu dla innych aut
-    }
-}
-
-/*!
-@param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
-@details Funkcja wykonywana przez utworzony wątek (wariant a) zadania) //TODO: Do opisania przez Arka
-*/
-_Noreturn void* CarMovement_vA_B(void* _carNumber)
-{
-    int carNumber = *(int*)_carNumber;
-    free(_carNumber);
-    while(1)
-    {
-        sem_wait(&variable);
-        cityCountB++;
-        PrintCurrentState();
-        if(cityCountA == 0)
-        {
-            while(GetQueueLenght(queueB)<cityCountB) {
-                Enqueue(&queueB, carNumber);
-                PrintCurrentState();
-
-                sem_post(&semB);
-            }
-        }
-        sem_post(&variable);
-        sem_wait(&semB);
-        //wjezdza na most
-        carOnBridge = carNumber;
-        PrintCurrentState();
-        carOnBridge = -1;
-        //zjezdza z mostu
-        sem_wait(&variable);
-        Dequeue(&queueB);
-        PrintCurrentState();
-
-        cityCountB--;
-        PrintCurrentState();
-
-        if(GetQueueLenght(queueB) == 0)
-        {
-            while(GetQueueLenght(queueA) < cityCountA)
-            {
-                Enqueue(&queueA, carNumber);
-                PrintCurrentState();
-
-                sem_post(&semA);
-            }
-        }
-        sem_post(&variable);
     }
 }
 
