@@ -151,36 +151,37 @@ sem_t variable;
 */
 void PrintCurrentState()
 {
-    if(carOnBridge != -1)
-    {
-        char* direction;
+//    if(carOnBridge != -1)
+//    {
+//        char* direction;
+//
+//        if (carOnBridgeDirection == 0 ) //jedzie z miasta A
+//        {
+//            direction = ">>";
+//        }
+//        else //jedzie z miasta B
+//        {
+//            direction = "<<";
+//        }
+//
+//        printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
+//               cityCountA,
+//               GetQueueLenght(queueA),
+//               direction,
+//               carOnBridge,
+//               direction,
+//               GetQueueLenght(queueB),
+//               cityCountB);
+//    }
+//    else
 
-        if (carOnBridgeDirection == 0 ) //jedzie z miasta A
-        {
-           direction = ">>";
-        }
-        else //jedzie z miasta B
-        {
-            direction = "<<";
-        }
+    printf("A-%d %d>>> [    %d    ] <<<%d %d-B\n",
+           cityCountA,
+           GetQueueLenght(queueA),
+           carOnBridge,
+           GetQueueLenght(queueB),
+           cityCountB);
 
-        printf("A-%d %d>>> [%s %d %s] <<<%d %d-B\n",
-               cityCountA,
-               GetQueueLenght(queueA),
-               direction,
-               carOnBridge,
-               direction,
-               GetQueueLenght(queueB),
-               cityCountB);
-    }
-    else
-    {
-        printf("A-%d %d>>> [        ] <<<%d %d-B\n",
-               cityCountA,
-               GetQueueLenght(queueA),
-               GetQueueLenght(queueB),
-               cityCountB);
-    }
 }
 
 /*!
@@ -255,8 +256,6 @@ void* CarMovement(void* _carNumber)
     return NULL;
 }
 
-
-
 //V - post
 //P - wait
 
@@ -271,32 +270,44 @@ _Noreturn void* CarMovementA(void* _carNumber)
 
     while(1)
     {
-        sem_post(variable);
+        sem_post(&variable);
         cityCountA++;
+
+        PrintCurrentState();
         if(cityCountB == 0)
         {
             while(GetQueueLenght(queueA) < cityCountA)
             {
                 Enqueue(&queueA, carNumber);
-                sem_post(semA);
+                PrintCurrentState();
+                sem_post(&semA);
             }
         }
-        sem_post(variable);
-        sem_wait(semA);
+        sem_post(&variable);
+        sem_wait(&semA);
         //wjezdza na most
+        carOnBridge = carNumber;
+        PrintCurrentState();
+        carOnBridge = -1;
         //zjezdza z mostu
-        sem_wait(variable);
+        sem_wait(&variable);
         Dequeue(&queueA);
+        PrintCurrentState();
         cityCountA--;
+        PrintCurrentState();
+
         if(GetQueueLenght(queueA) == 0)
         {
+
             while(GetQueueLenght(queueB)<cityCountB)
             {
                 Enqueue(&queueB, carNumber);
-                sem_post(semB);
+                PrintCurrentState();
+
+                sem_post(&semB);
             }
         }
-        sem_post(variable);
+        sem_post(&variable);
     }
 }
 
@@ -310,40 +321,53 @@ _Noreturn void* CarMovementB(void* _carNumber)
     free(_carNumber);
     while(1)
     {
-        sem_wait(variable);
+        sem_wait(&variable);
         cityCountB++;
+        PrintCurrentState();
         if(cityCountA == 0)
         {
             while(GetQueueLenght(queueB)<cityCountB) {
                 Enqueue(&queueB, carNumber);
-                sem_post(semB);
+                PrintCurrentState();
+
+                sem_post(&semB);
             }
         }
-        sem_post(variable);
-        sem_wait(semB);
+        sem_post(&variable);
+        sem_wait(&semB);
         //wjezdza na most
+        carOnBridge = carNumber;
+        PrintCurrentState();
+        carOnBridge = -1;
         //zjezdza z mostu
-        sem_wait(variable);
+        sem_wait(&variable);
         Dequeue(&queueB);
+        PrintCurrentState();
+
         cityCountB--;
+        PrintCurrentState();
+
         if(GetQueueLenght(queueB) == 0)
         {
             while(GetQueueLenght(queueA) < cityCountA)
             {
                 Enqueue(&queueA, carNumber);
-                sem_post(semA);
+                PrintCurrentState();
+
+                sem_post(&semA);
             }
         }
-        sem_post(variable);
+        sem_post(&variable);
     }
 }
 
 /*!
 @param count dodatnia liczba pojazdów do utworzenia jako wątki
+@param threadFunction Funkcja jaka ma być wykonywana przez utworzone wątki
 @returns tablica utworzonych wątków
 @details tworzy tablicę adresów wątków oraz przydziela każdemu numer pojazdu <0; maxInt>
 */
-pthread_t* CreateCars(int count)
+pthread_t* CreateCars(int count, void* threadFunction)
 {
     pthread_t* carsArray = (pthread_t*)malloc(sizeof(pthread_t) * count);
 
@@ -359,7 +383,7 @@ pthread_t* CreateCars(int count)
         int* carNumber = (int*)malloc(sizeof (int));
         *carNumber = i;
 
-        if(pthread_create(&carsArray[i], NULL, CarMovement, carNumber) != 0)
+        if(pthread_create(&carsArray[i], NULL, threadFunction, carNumber) != 0)
         {
             perror("Nie udało się utworzyć wątku");
         }
@@ -422,35 +446,14 @@ void CrossBridgeVersionA(int carCount)
     sem_init(&semB, 0, 0);
     sem_init(&variable, 0, 1);
 
-    pthread_t* carsArray = (pthread_t*)malloc(sizeof(pthread_t) * carCount);
-    for (int i = 0; i < carCount/2; ++i)
-    {
-        int* carNumber = (int*)malloc(sizeof (int));
-        *carNumber = i;
+    int carCountA = carCount/2;
+    int carCountB = carCount - carCountA;
 
-        if(pthread_create(&carsArray[i], NULL, CarMovementA, carNumber) != 0)
-        {
-            perror("Nie udało się utworzyć wątku");
-        }
-    }
-    for (int i = 5; i < carCount/2; ++i)
-    {
-        int* carNumber = (int*)malloc(sizeof (int));
-        *carNumber = i;
+    pthread_t* carsArrayA = CreateCars(carCountA, CarMovementA);
+    pthread_t* carsArrayB = CreateCars(carCountB, CarMovementB);
 
-        if(pthread_create(&carsArray[i], NULL, CarMovementB, carNumber) != 0)
-        {
-            perror("Nie udało się utworzyć wątku");
-        }
-    }
-    for (int i = 0; i < carCount; ++i)
-    {
-        if(pthread_join(carsArray[i], NULL) != 0)
-        {
-            perror("Nie udało się połączyć wątku");
-        }
-    }
-
+    DestroyCars(carsArrayA,carCountA);
+    DestroyCars(carsArrayB,carCountB);
 
     sem_destroy(&semA);
     sem_destroy(&semB);
@@ -465,7 +468,7 @@ void CrossBridgeVersionB(int carCount)
 {
     pthread_cond_init(&bridgeCondition, NULL);
 
-    pthread_t* carsArray = CreateCars(carCount);
+    pthread_t* carsArray = CreateCars(carCount, CarMovement);
 
     DestroyCars(carsArray, carCount);
 
@@ -475,6 +478,6 @@ void CrossBridgeVersionB(int carCount)
 
 int main(int argc, char** argv)
 {
-    CrossBridgeVersionA(GetCarCount(argc, argv));
+    CrossBridgeVersionB(GetCarCount(argc, argv));
     return 0;
 }
