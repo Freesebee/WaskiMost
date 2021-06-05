@@ -1,27 +1,14 @@
 #include <stdio.h>
-#include <pthread.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
-
-//TODO: Realizacja b) - funkcje:
-/*
-
-pthread_cond_signal(&bridgeCondition, &bridgeMutex);
-
-///pthread_cond_wait(&bridgeCondition);
-Wykonuje:
-1. pthread_mutex_unlock(&bridgeMutex);
-2. Czeka na sygnał od pthread_cond_signal(&bridgeCondition, &bridgeMutex);
-3. pthread_mutex_lock(&bridgeMutex);
-
-pthread_cond_broadcast(&bridgeCondition, &bridgeMutex);
-Wykonuje to samo co pthread_cond_wait(,) lecz dla wszystkich wątków oczekujących na sygnał
-*/
+#include <time.h>
+#include <unistd.h>
+#include <semaphore.h>
+#include <pthread.h>
 
 //region Implementacja kolejki
 
@@ -128,8 +115,11 @@ pthread_mutex_t bridgeMutex;
 /*!@details Zmienna warunkowa sygnalizująca wątkom dostęp do zasobu*/
 pthread_cond_t bridgeCondition;
 
-/*!@details Pierwszy element kolejki*/
-QUEUE_ELEM *queueA, *queueB;
+/*!@details Pierwszy element kolejki do mostu od strony miasta A*/
+QUEUE_ELEM *queueA;
+
+/*!@details Pierwszy element kolejki do mostu od strony miasta B*/
+QUEUE_ELEM *queueB;
 
 /*!@details Numer pojazdu aktualnie przejeżdżającego przez most*/
 int carOnBridge = -1;
@@ -144,16 +134,19 @@ int cityCountA;
 /*!@details liczba pojazdów aktualnie znajdujących się w mieście B*/
 int cityCountB;
 
+/*!@details semafor miasta A*/ //TODO: do opisania przez Arka
+sem_t semA;
+
+/*!@details semafor miasta B*/ //TODO: do opisania przez Arka
+sem_t semB;
+
+/*!@details semafor mostu*/ //TODO: do opisania przez Arka
+sem_t variable;
+
 //endregion
 
 //region Podstawowe funkcje
 /*!
-@param cityA liczba pojazdów znajdujących się w mieście A
-@param cityB liczba pojazdów znajdujących się w mieście B
-@param queueA liczba pojazdów jadących z miasta A, czekających na przejazd
-@param queueB liczba pojazdów jadących z miasta B, czekających na przejazd
-@param fromCityA kierunek ruchu pojazdu przejeżdżającego przez most
-@param carOnBridge numer pojazdu przejeżdżającego przez most
 @details wypisuje aktualny stan ruchu przez most
 */
 void PrintCurrentState()
@@ -192,7 +185,7 @@ void PrintCurrentState()
 
 /*!
 @param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
-@details Funkcja wykonywana przez każdy utworzony wątek
+@details Funkcja wykonywana przez każdy utworzony wątek (wariant b) zadania)
 */
 void* CarMovement(void* _carNumber)
 {
@@ -260,6 +253,89 @@ void* CarMovement(void* _carNumber)
     }
 
     return NULL;
+}
+
+
+
+//V - post
+//P - wait
+
+/*!
+@param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
+@details Funkcja wykonywana przez utworzony wątek (wariant a) zadania) //TODO: Do opisania przez Arka
+*/
+_Noreturn void* CarMovementA(void* _carNumber)
+{
+    int carNumber = *(int*)_carNumber;
+    free(_carNumber);
+
+    while(1)
+    {
+        sem_post(variable);
+        cityCountA++;
+        if(cityCountB == 0)
+        {
+            while(GetQueueLenght(queueA) < cityCountA)
+            {
+                Enqueue(&queueA, carNumber);
+                sem_post(semA);
+            }
+        }
+        sem_post(variable);
+        sem_wait(semA);
+        //wjezdza na most
+        //zjezdza z mostu
+        sem_wait(variable);
+        Dequeue(&queueA);
+        cityCountA--;
+        if(GetQueueLenght(queueA) == 0)
+        {
+            while(GetQueueLenght(queueB)<cityCountB)
+            {
+                Enqueue(&queueB, carNumber);
+                sem_post(semB);
+            }
+        }
+        sem_post(variable);
+    }
+}
+
+/*!
+@param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
+@details Funkcja wykonywana przez utworzony wątek (wariant a) zadania) //TODO: Do opisania przez Arka
+*/
+_Noreturn void* CarMovementB(void* _carNumber)
+{
+    int carNumber = *(int*)_carNumber;
+    free(_carNumber);
+    while(1)
+    {
+        sem_wait(variable);
+        cityCountB++;
+        if(cityCountA == 0)
+        {
+            while(GetQueueLenght(queueB)<cityCountB) {
+                Enqueue(&queueB, carNumber);
+                sem_post(semB);
+            }
+        }
+        sem_post(variable);
+        sem_wait(semB);
+        //wjezdza na most
+        //zjezdza z mostu
+        sem_wait(variable);
+        Dequeue(&queueB);
+        cityCountB--;
+        if(GetQueueLenght(queueB) == 0)
+        {
+            while(GetQueueLenght(queueA) < cityCountA)
+            {
+                Enqueue(&queueA, carNumber);
+                sem_post(semA);
+            }
+        }
+        sem_post(variable);
+    }
 }
 
 /*!
@@ -335,6 +411,56 @@ int GetCarCount(int argc, char **argv)
 
 //endregion
 
+//region Wariant zadania
+/*!
+ * @details Funkcja wykonująca wariant a) programu
+ * @param Liczba pojazdów/wątków, które mają przejeżdżać przez most
+ */
+void CrossBridgeVersionA(int carCount)
+{
+    sem_init(&semA, 0, 0);
+    sem_init(&semB, 0, 0);
+    sem_init(&variable, 0, 1);
+
+    pthread_t* carsArray = (pthread_t*)malloc(sizeof(pthread_t) * carCount);
+    for (int i = 0; i < carCount/2; ++i)
+    {
+        int* carNumber = (int*)malloc(sizeof (int));
+        *carNumber = i;
+
+        if(pthread_create(&carsArray[i], NULL, CarMovementA, carNumber) != 0)
+        {
+            perror("Nie udało się utworzyć wątku");
+        }
+    }
+    for (int i = 5; i < carCount/2; ++i)
+    {
+        int* carNumber = (int*)malloc(sizeof (int));
+        *carNumber = i;
+
+        if(pthread_create(&carsArray[i], NULL, CarMovementB, carNumber) != 0)
+        {
+            perror("Nie udało się utworzyć wątku");
+        }
+    }
+    for (int i = 0; i < carCount; ++i)
+    {
+        if(pthread_join(carsArray[i], NULL) != 0)
+        {
+            perror("Nie udało się połączyć wątku");
+        }
+    }
+
+
+    sem_destroy(&semA);
+    sem_destroy(&semB);
+    sem_destroy(&variable);
+}
+
+/*!
+ * @details Funkcja wykonująca wariant b) programu
+ * @param Liczba pojazdów/wątków, które mają przejeżdżać przez most
+ */
 void CrossBridgeVersionB(int carCount)
 {
     pthread_cond_init(&bridgeCondition, NULL);
@@ -345,18 +471,10 @@ void CrossBridgeVersionB(int carCount)
 
     free(carsArray);
 }
+//endregion
 
 int main(int argc, char** argv)
 {
-    int carCount = GetCarCount(argc, argv);
-
-    pthread_cond_init(&bridgeCondition, NULL);
-
-    pthread_t* carsArray = CreateCars(carCount);
-
-    DestroyCars(carsArray, carCount);
-
-    free(carsArray);
-
+    CrossBridgeVersionA(GetCarCount(argc, argv));
     return 0;
 }
