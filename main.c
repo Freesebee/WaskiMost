@@ -320,7 +320,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
             {
                 pthread_mutex_lock(&bridgeMutex);
                 Dequeue(&queueA); //opuszcza kolejkę z A
-                PrintCurrentState();
+                //PrintCurrentState();
                 pthread_mutex_unlock(&bridgeMutex);
 
                 break;
@@ -344,7 +344,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1; //zjezdza z mostu
-        PrintCurrentState();
+        //PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         sem_post(&semBridge); //odblokowanie mostu dla innych aut
 
@@ -371,7 +371,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
             {
                 pthread_mutex_lock(&bridgeMutex);
                 Dequeue(&queueB); //opuszcza kolejkę z B
-                PrintCurrentState();
+                //PrintCurrentState();
                 pthread_mutex_unlock(&bridgeMutex);
                 break;
             }
@@ -394,7 +394,7 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1; //zjezdza z mostu
-        PrintCurrentState();
+        //PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         sem_post(&semBridge); //odblokowanie mostu dla innych aut
     }
@@ -519,6 +519,6 @@ void CrossBridgeVersionB(int carCount)
 
 int main(int argc, char** argv)
 {
-    CrossBridgeVersionB(GetCarCount(argc, argv));
+    CrossBridgeVersionA(GetCarCount(argc, argv));
     return 0;
 }
