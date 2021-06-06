@@ -180,7 +180,7 @@ void PrintCurrentState()
 @param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
 @details Funkcja wykonywana przez każdy utworzony wątek (wariant b) zadania)
 */
-void* CarMovement_vB(void* _carNumber)
+_Noreturn void* CarMovement_vB(void* _carNumber)
 {
     int carNumber = *(int*)_carNumber;
 
@@ -189,103 +189,66 @@ void* CarMovement_vB(void* _carNumber)
 
     for(;;)
     {
-        //region Wyjazd z miasta A
+        //region Wyjazd z miasta A i dołączenie do kolejki
         pthread_mutex_lock(&bridgeMutex);
         cityCountA--;
-        PrintCurrentState();
-        pthread_mutex_unlock(&bridgeMutex);
-        //endregion
-
-        //region Dołączenie do kolejki z A
-        pthread_mutex_lock(&bridgeMutex);
         Enqueue(&queueA, carNumber);
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        //regoin Oczekiwanie na wjazd na most
+        //regoin Oczekiwanie i wjazd na most
         pthread_mutex_lock(&bridgeMutex);
         while(Peek(queueA) != carNumber || (carOnBridgeDirection == 0 && GetQueueLenght(queueB) > 0))
         {
             pthread_cond_wait(&bridgeCondition, &bridgeMutex);
         }
         Dequeue(&queueA);
-        pthread_mutex_unlock(&bridgeMutex);
-        //endregion
-
-        //region Ruch na moście z A do B
-        pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber;
         carOnBridgeDirection = 0;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        //region Zjazd z mostu
+        //region Zjazd z mostu i wjazd do miasta B
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1;
+        cityCountB++;
         PrintCurrentState();
         pthread_cond_broadcast(&bridgeCondition);
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        //region Wjazd do miasta B
-        pthread_mutex_lock(&bridgeMutex);
-        cityCountB++;
-        PrintCurrentState();
-        pthread_mutex_unlock(&bridgeMutex);
-        //endregion
-
-        //region Wyjazd z miasta B
+        //region Wyjazd z miasta B i dołączenie do kolejki
         pthread_mutex_lock(&bridgeMutex);
         cityCountB--;
-        PrintCurrentState();
-        pthread_mutex_unlock(&bridgeMutex);
-        //endregion
-
-        //region Dołączenie do kolejki z B
-        pthread_mutex_lock(&bridgeMutex);
         Enqueue(&queueB, carNumber);
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        //region Oczekiwanie na wjazd na most
+        //region Oczekiwanie i wjazd na most
         pthread_mutex_lock(&bridgeMutex);
         while(Peek(queueB) != carNumber || (carOnBridgeDirection == 1 && GetQueueLenght(queueA) > 0))
         {
             pthread_cond_wait(&bridgeCondition, &bridgeMutex);
         }
         Dequeue(&queueB);
-        pthread_mutex_unlock(&bridgeMutex);
-        //endregion
-
-        //region Ruch na moście z B do A
-        pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber;
         carOnBridgeDirection = 1;
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
 
-        //region Zjazd z mostu
+        //region Zjazd z mostu i wjazd do miasta A
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1;
-        PrintCurrentState();
-        pthread_cond_broadcast(&bridgeCondition);
-        pthread_mutex_unlock(&bridgeMutex);
-        //endregion
-
-        //region Wjazd do miasta A
-        pthread_mutex_lock(&bridgeMutex);
         cityCountA++;
         PrintCurrentState();
         pthread_cond_broadcast(&bridgeCondition);
         pthread_mutex_unlock(&bridgeMutex);
         //endregion
     }
-
-    return NULL;
 }
 
 /*!
@@ -299,19 +262,15 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 
     while(1)
     {
-        pthread_mutex_lock(&bridgeMutex); //wjazd do miasta A
-        cityCountA++;
-        PrintCurrentState();
-        pthread_mutex_unlock(&bridgeMutex);
-
-        usleep(100);
-
+        //region Wyjazd z A i dołączenie do kolejki
         pthread_mutex_lock(&bridgeMutex);
         cityCountA--; //opuszczenie miasta A
         Enqueue(&queueA, carNumber); //stanięcie w kolejce z A
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
+        //endregion
 
+        //region Oczekiwanie i wjazd na most
         do
         {
             sem_wait(&semBridge); //chec wjazdu na most
@@ -320,9 +279,6 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
             {
                 pthread_mutex_lock(&bridgeMutex);
                 Dequeue(&queueA); //opuszcza kolejkę z A
-                //PrintCurrentState();
-                pthread_mutex_unlock(&bridgeMutex);
-
                 break;
             }
             else
@@ -332,37 +288,30 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
         }
         while(1);
 
-        usleep(100);
-
-        pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber; //wjezdza na most
         carOnBridgeDirection = 0; //jedzie z A do B
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
+        //endregion
 
-        usleep(100);
-
+        //region Zjazd z mostu i wjazd do miasta B
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1; //zjezdza z mostu
-        //PrintCurrentState();
-        pthread_mutex_unlock(&bridgeMutex);
         sem_post(&semBridge); //odblokowanie mostu dla innych aut
-
-        usleep(100);
-
-        pthread_mutex_lock(&bridgeMutex);
         cityCountB++; //wjazd do miasta B
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
+        //endregion
 
-        usleep(100);
-
+        //region Wyjazd z miasta B i dołączenie do kolejki
         pthread_mutex_lock(&bridgeMutex);
         cityCountB--; //opuszczenie miasta B
         Enqueue(&queueB, carNumber); //stanięcie w kolejce B
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
+        //endregion
 
+        //region Oczekiwanie i wjazd na most
         do
         {
             sem_wait(&semBridge); //chec wjazdu na most
@@ -371,8 +320,6 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
             {
                 pthread_mutex_lock(&bridgeMutex);
                 Dequeue(&queueB); //opuszcza kolejkę z B
-                //PrintCurrentState();
-                pthread_mutex_unlock(&bridgeMutex);
                 break;
             }
             else
@@ -382,21 +329,20 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
         }
         while(1);
 
-        usleep(100);
-
-        pthread_mutex_lock(&bridgeMutex);
         carOnBridge = carNumber; //wjezdza na most
         carOnBridgeDirection = 1; //jedzie z miasta B do A
         PrintCurrentState();
         pthread_mutex_unlock(&bridgeMutex);
+        //endregion
 
-        usleep(100);
-
+        //region Zjazd z mostu i wjazd do miasta A
         pthread_mutex_lock(&bridgeMutex);
         carOnBridge = -1; //zjezdza z mostu
-        //PrintCurrentState();
-        pthread_mutex_unlock(&bridgeMutex);
+        cityCountA++; //wjazd do miasta A
+        PrintCurrentState();
         sem_post(&semBridge); //odblokowanie mostu dla innych aut
+        pthread_mutex_unlock(&bridgeMutex);
+        //endregion
     }
 }
 
@@ -409,6 +355,9 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 pthread_t* CreateCars(int count, void* threadFunction)
 {
     pthread_t* carsArray = (pthread_t*)malloc(sizeof(pthread_t) * count);
+
+    cityCountA = count;
+    cityCountB = 0;
 
     for (int i = 0; i < count; ++i)
     {
@@ -505,9 +454,6 @@ void CrossBridgeVersionB(int carCount)
 {
     pthread_mutex_init(&bridgeMutex, NULL);
     pthread_cond_init(&bridgeCondition, NULL);
-
-    cityCountA = carCount;
-    cityCountB = 0;
 
     pthread_t* carsArray = CreateCars(carCount, CarMovement_vB);
 

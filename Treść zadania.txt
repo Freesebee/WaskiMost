@@ -6,7 +6,7 @@ Napisać program w którym N samochodów (wątków) będzie nieustannie przejeż
 pokonując po drodze most (N przekazywane jako argument linii poleceń).
 
 Zsynchronizuj dostęp wątków do mostu:
-TODO: a) nie wykorzystując zmiennych warunkowych (tylko mutexy/semafory) [17p]
+a) nie wykorzystując zmiennych warunkowych (tylko mutexy/semafory) [17p]
 b) wykorzystując zmienne warunkowe (condition variables) [17p]
 
 Aby móc obserwować działanie programu, każdemu samochodowi przydziel numer.
