@@ -1,12 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <string.h>
 #include <errno.h>
-#include <time.h>
-#include <unistd.h>
 #include <semaphore.h>
 #include <pthread.h>
 
@@ -94,6 +88,10 @@ int GetQueueLenght(QUEUE_ELEM* head)
     return length;
 }
 
+/*!
+ * @details Pomocnicza funkcja wyświetlająca elementy należące do kolejki
+ * @param QUEUE_ELEM* Pierwszy element kolejki
+ */
 void ShowQueue(QUEUE_ELEM* iterator)
 {
     if(GetQueueLenght(iterator) > 0)
@@ -128,10 +126,10 @@ int carOnBridge = -1;
  * 0 jeżeli jedzie z miasta A, 1 jeżeli jedzie z miasta B */
 int carOnBridgeDirection;
 
-/*!@details liczba pojazdów aktualnie znajdujących się w mieście A*/
+/*!@details Liczba pojazdów aktualnie znajdujących się w mieście A*/
 int cityCountA;
 
-/*!@details liczba pojazdów aktualnie znajdujących się w mieście B*/
+/*!@details Liczba pojazdów aktualnie znajdujących się w mieście B*/
 int cityCountB;
 
 /*!@details Kontroluje dostęp wątków do mostu - czy samochód może na niego
@@ -177,7 +175,7 @@ void PrintCurrentState()
 }
 
 /*!
-@param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
+@param _carNumber Wskażnik do numeru pojazdu przydzielonego przy tworzeniu
 @details Funkcja wykonywana przez każdy utworzony wątek (wariant b) zadania)
 */
 _Noreturn void* CarMovement_vB(void* _carNumber)
@@ -252,7 +250,7 @@ _Noreturn void* CarMovement_vB(void* _carNumber)
 }
 
 /*!
-@param _carNumber wskażnik do numeru pojazdu przydzielonego przy tworzeniu
+@param _carNumber Wskażnik do numeru pojazdu przydzielonego przy tworzeniu
 @details Funkcja wykonywana przez utworzony wątek (wariant a) zadania)
 */
 _Noreturn void* CarMovement_vA_A(void* _carNumber)
@@ -347,10 +345,10 @@ _Noreturn void* CarMovement_vA_A(void* _carNumber)
 }
 
 /*!
-@param count dodatnia liczba pojazdów do utworzenia jako wątki
+@param count Dodatnia liczba pojazdów do utworzenia jako wątki
 @param threadFunction Funkcja jaka ma być wykonywana przez utworzone wątki
-@returns tablica utworzonych wątków
-@details tworzy tablicę adresów wątków oraz przydziela każdemu numer pojazdu <0; maxInt>
+@returns Tablica utworzonych wątków
+@details Tworzy tablicę adresów wątków oraz przydziela każdemu numer pojazdu <0; maxInt>
 */
 pthread_t* CreateCars(int count, void* threadFunction)
 {
@@ -376,9 +374,9 @@ pthread_t* CreateCars(int count, void* threadFunction)
 }
 
 /*!
-@param carsArray tablica wątków
-@param count rozmiar tablicy wątków
-@details przyłącza utworzone wątki znajduące się w podanej tablicy
+@param carsArray Tablica wątków
+@param count Rozmiar tablicy wątków
+@details Przyłącza utworzone wątki znajduące się w podanej tablicy
 */
 void DestroyCars(pthread_t* carsArray, int count)
 {
@@ -392,10 +390,10 @@ void DestroyCars(pthread_t* carsArray, int count)
 }
 
 /*!
-@param argc liczba argumentów programu
-@param argv tablica argumentow programu
-@returns liczba pojazdów do utworzenia
-@details sprawdza poprawność podanych i odczytuje wprowadzone argumenty
+@param argc Liczba argumentów programu
+@param argv Tablica argumentow programu
+@returns Liczba pojazdów do utworzenia
+@details Sprawdza poprawność podanych i odczytuje wprowadzone argumenty
 */
 int GetCarCount(int argc, char **argv)
 {
@@ -463,8 +461,14 @@ void CrossBridgeVersionB(int carCount)
 }
 //endregion
 
+/*!
+ * @details Główna funkcja programu
+ * @param argc Liczba argumentów programu
+ * @param argv Tablica argumentów programu
+ * */
 int main(int argc, char** argv)
 {
-    CrossBridgeVersionA(GetCarCount(argc, argv));
+    CrossBridgeVersionA(GetCarCount(argc, argv)); //<<wariant a) zadania
+    //CrossBridgeVersionB(GetCarCount(argc, argv)); //<<wariant b) zadania
     return 0;
 }
